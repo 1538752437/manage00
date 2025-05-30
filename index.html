@@ -89,8 +89,7 @@
     }
     .table th, .table td { 
       word-break: break-word; 
-      padding: 8px; 
-      vertical-align: middle; 
+      padding: 12px; 
     }
     .table-hover tbody tr:hover { 
       background-color: #f8f9fa; 
@@ -99,27 +98,6 @@
       text-align: center; 
       color: #6f4e37; 
       font-style: italic; 
-      position: relative; 
-      padding: 20px; 
-    }
-    .loading::after { 
-      content: ''; 
-      display: inline-block; 
-      width: 20px; 
-      height: 20px; 
-      border: 2px solid #6f4e37; 
-      border-radius: 50%; 
-      border-top-color: transparent; 
-      animation: spin 1s linear infinite; 
-      margin-left: 10px; 
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .error-container { 
-      text-align: center; 
-      padding: 20px; 
-      color: #dc3545; 
     }
     #admin-sections { 
       display: none; 
@@ -155,9 +133,6 @@
       .table { 
         font-size: 0.85rem; 
       }
-      .table th, .table td { 
-        padding: 6px; 
-      }
     }
     @media (min-width: 769px) {
       .admin-section { 
@@ -171,7 +146,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-    import { getDatabase, ref, push, get, remove, update, orderByChild, limitToFirst } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, push, onValue, remove, update, orderByChild, startAt, endAt, limitToFirst } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const firebaseConfig = {
@@ -309,46 +284,27 @@
 
         async function loadProducts(searchTerm = '') {
           const productTable = document.querySelector('#product-manage table');
-          const tbody = productTable.querySelector('tbody');
-          tbody.innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
-
-          try {
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('加载超时，请重试！')), 10000);
-            });
-
-            const productsRef = ref(db, 'products');
-            const queryRef = searchTerm ? 
-              orderByChild('name').startAt(searchTerm).endAt(searchTerm + '\uf8ff') : 
-              limitToFirst(50);
-
-            const snapshot = await Promise.race([
-              get(productsRef),
-              timeoutPromise
-            ]);
-
-            tbody.innerHTML = '';
+          productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
+          const productsRef = ref(db, 'products');
+          onValue(productsRef, (snapshot) => {
+            productTable.querySelector('tbody').innerHTML = '';
             if (!snapshot.exists()) {
-              tbody.innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
+              productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
               return;
             }
-
             let products = [];
             snapshot.forEach((childSnapshot) => {
               const product = childSnapshot.val();
               product.id = childSnapshot.key;
               products.push(product);
             });
-
             if (searchTerm) {
               products = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
             }
-
             if (products.length === 0) {
-              tbody.innerHTML = '<tr><td colspan="5" class="loading">无匹配商品。</td></tr>';
+              productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">无匹配商品。</td></tr>';
               return;
             }
-
             products.forEach((product) => {
               const row = document.createElement('tr');
               row.innerHTML = `
@@ -361,19 +317,9 @@
                   <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')">删除</button>
                 </td>
               `;
-              tbody.appendChild(row);
+              productTable.querySelector('tbody').appendChild(row);
             });
-          } catch (error) {
-            console.error('Error loading products:', error.message);
-            tbody.innerHTML = `
-              <tr>
-                <td colspan="5" class="error-container">
-                  加载失败：${error.message}<br>
-                  <button class="btn btn-primary mt-2" onclick="loadProducts('${searchTerm}')">重试</button>
-                </td>
-              </tr>
-            `;
-          }
+          });
         }
 
         window.deleteProduct = async function(id) {
@@ -384,7 +330,6 @@
           if (confirm('确定删除此商品？')) {
             await remove(ref(db, `products/${id}`));
             alert('商品删除成功！');
-            loadProducts();
           }
         };
 
@@ -394,18 +339,19 @@
             return;
           }
           const productRef = ref(db, `products/${id}`);
-          const snapshot = await get(productRef);
-          const product = snapshot.val();
-          if (product) {
-            const newName = prompt('请输入新商品名称：', product.name);
-            const newPrice = parseFloat(prompt('请输入新价格：', product.price));
-            const newDescription = prompt('请输入新描述：', product.description);
-            const newCategory = prompt('请输入新分类：', product.category);
-            const newImageUrl = prompt('请输入新图片URL：', product.imageUrl);
-            if (newName && !isNaN(newPrice) && newDescription && newCategory) {
-              await updateProduct(id, newName, newPrice, newDescription, newCategory, newImageUrl);
+          onValue(productRef, (snapshot) => {
+            const product = snapshot.val();
+            if (product) {
+              const newName = prompt('请输入新商品名称：', product.name);
+              const newPrice = parseFloat(prompt('请输入新价格：', product.price));
+              const newDescription = prompt('请输入新描述：', product.description);
+              const newCategory = prompt('请输入新分类：', product.category);
+              const newImageUrl = prompt('请输入新图片URL：', product.imageUrl);
+              if (newName && !isNaN(newPrice) && newDescription && newCategory) {
+                updateProduct(id, newName, newPrice, newDescription, newCategory, newImageUrl);
+              }
             }
-          }
+          }, { onlyOnce: true });
         };
 
         async function updateProduct(id, name, price, description, category, imageUrl) {
@@ -418,20 +364,16 @@
             imageUrl: imageUrl || 'https://images.pexels.com/photos/3400193/pexels-photo-3400193.jpeg?auto=compress&cs=tinysrgb&w=150'
           });
           alert('商品更新成功！');
-          loadProducts();
         }
 
         async function loadOrders(searchTerm = '', limit = 10) {
           const orderTable = document.querySelector('#order-manage table');
-          const tbody = orderTable.querySelector('tbody');
-          tbody.innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
-
-          try {
-            const ordersRef = ref(db, 'orders');
-            const snapshot = await get(ordersRef);
-            tbody.innerHTML = '';
+          orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
+          const ordersRef = ref(db, 'orders');
+          onValue(ordersRef, (snapshot) => {
+            orderTable.querySelector('tbody').innerHTML = '';
             if (!snapshot.exists()) {
-              tbody.innerHTML = '<tr><td colspan="7" class="loading">暂无订单。</td></tr>';
+              orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="7" class="loading">暂无订单。</td></tr>';
               return;
             }
             let orders = [];
@@ -446,7 +388,7 @@
             orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             orders = orders.slice(0, limit);
             if (orders.length === 0) {
-              tbody.innerHTML = '<tr><td colspan="7" class="loading">无匹配订单。</td></tr>';
+              orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="7" class="loading">无匹配订单。</td></tr>';
               return;
             }
             orders.forEach((order) => {
@@ -469,12 +411,12 @@
                   <button class="btn btn-danger btn-sm" onclick="deleteOrder('${order.id}')">删除</button>
                 </td>
               `;
-              tbody.appendChild(row);
+              orderTable.querySelector('tbody').appendChild(row);
             });
-          } catch (error) {
+          }, (error) => {
             console.error('Error loading orders:', error.message);
-            tbody.innerHTML = '<tr><td colspan="7" class="error-container">加载订单失败，请稍后重试。</td></tr>';
-          }
+            orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="7" class="loading">加载订单失败，请稍后重试。</td></tr>';
+          });
         }
 
         window.updateOrderStatus = async function(orderId, status) {
@@ -484,7 +426,6 @@
           }
           await update(ref(db, `orders/${orderId}`), { status });
           alert('订单状态更新成功！');
-          loadOrders();
         };
 
         window.deleteOrder = async function(orderId) {
@@ -495,7 +436,6 @@
           if (confirm('确定删除此订单？')) {
             await remove(ref(db, `orders/${orderId}`));
             alert('订单删除成功！');
-            loadOrders();
           }
         }
 
