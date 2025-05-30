@@ -13,6 +13,7 @@
       color: #333; 
       position: relative; 
       overflow-x: hidden; 
+      min-height: 100vh; 
     }
     body::before { 
       content: ''; 
@@ -21,39 +22,41 @@
       left: 0; 
       width: 100%; 
       height: 100%; 
-      background: rgba(255, 255, 255, 0.8); 
+      background: rgba(255, 255, 255, 0.85); 
       z-index: -1; 
     }
     .admin-section { 
-      padding: 20px 0; 
+      padding: 40px 0; 
       background-color: #fff; 
       border-radius: 10px; 
-      margin: 15px; 
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
-      max-width: 100%; 
+      margin: 20px auto; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+      max-width: 1200px; 
       box-sizing: border-box; 
     }
     .container { 
-      padding: 0 15px; 
+      padding: 0 30px; 
       width: 100%; 
-      max-width: 600px; 
-      margin: 0 auto; 
     }
     .form-control { 
       font-size: 1rem; 
       padding: 10px; 
-      margin-bottom: 10px; 
+      margin-bottom: 15px; 
     }
     .btn { 
       padding: 10px 20px; 
       font-size: 1rem; 
       touch-action: manipulation; 
       -webkit-tap-highlight-color: transparent; 
+      transition: all 0.2s; 
+    }
+    .btn:hover { 
+      transform: translateY(-1px); 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
     }
     .btn-primary { 
       background-color: #6f4e37; 
       border-color: #6f4e37; 
-      width: 100%; 
     }
     .btn-primary:hover { 
       background-color: #5a3f2d; 
@@ -82,15 +85,41 @@
     }
     .table { 
       background-color: #fff; 
-      font-size: 0.9rem; 
+      font-size: 1rem; 
     }
     .table th, .table td { 
       word-break: break-word; 
+      padding: 8px; 
+      vertical-align: middle; 
+    }
+    .table-hover tbody tr:hover { 
+      background-color: #f8f9fa; 
     }
     .loading { 
       text-align: center; 
       color: #6f4e37; 
       font-style: italic; 
+      position: relative; 
+      padding: 20px; 
+    }
+    .loading::after { 
+      content: ''; 
+      display: inline-block; 
+      width: 20px; 
+      height: 20px; 
+      border: 2px solid #6f4e37; 
+      border-radius: 50%; 
+      border-top-color: transparent; 
+      animation: spin 1s linear infinite; 
+      margin-left: 10px; 
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .error-container { 
+      text-align: center; 
+      padding: 20px; 
+      color: #dc3545; 
     }
     #admin-sections { 
       display: none; 
@@ -101,10 +130,19 @@
       margin-top: 5px; 
       display: none; 
     }
-    @media (max-width: 576px) {
+    .search-bar { 
+      margin-bottom: 20px; 
+    }
+    .pagination { 
+      margin-top: 20px; 
+    }
+    @media (max-width: 768px) {
       .admin-section { 
         margin: 10px; 
         padding: 15px 0; 
+      }
+      .container { 
+        padding: 0 15px; 
       }
       .form-control { 
         font-size: 0.95rem; 
@@ -117,12 +155,23 @@
       .table { 
         font-size: 0.85rem; 
       }
+      .table th, .table td { 
+        padding: 6px; 
+      }
+    }
+    @media (min-width: 769px) {
+      .admin-section { 
+        padding: 50px 0; 
+      }
+      .table-responsive { 
+        overflow-x: auto; 
+      }
     }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-    import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, push, get, remove, update, orderByChild, limitToFirst } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const firebaseConfig = {
@@ -258,33 +307,73 @@
           });
         }
 
-        async function loadProducts() {
+        async function loadProducts(searchTerm = '') {
           const productTable = document.querySelector('#product-manage table');
-          productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
-          const productsRef = ref(db, 'products');
-          onValue(productsRef, (snapshot) => {
-            productTable.querySelector('tbody').innerHTML = '';
+          const tbody = productTable.querySelector('tbody');
+          tbody.innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
+
+          try {
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('加载超时，请重试！')), 10000);
+            });
+
+            const productsRef = ref(db, 'products');
+            const queryRef = searchTerm ? 
+              orderByChild('name').startAt(searchTerm).endAt(searchTerm + '\uf8ff') : 
+              limitToFirst(50);
+
+            const snapshot = await Promise.race([
+              get(productsRef),
+              timeoutPromise
+            ]);
+
+            tbody.innerHTML = '';
             if (!snapshot.exists()) {
-              productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
               return;
             }
+
+            let products = [];
             snapshot.forEach((childSnapshot) => {
               const product = childSnapshot.val();
-              const productId = childSnapshot.key;
+              product.id = childSnapshot.key;
+              products.push(product);
+            });
+
+            if (searchTerm) {
+              products = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+            }
+
+            if (products.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="5" class="loading">无匹配商品。</td></tr>';
+              return;
+            }
+
+            products.forEach((product) => {
               const row = document.createElement('tr');
               row.innerHTML = `
-                <td>${productId}</td>
+                <td>${product.id}</td>
                 <td>${product.name}</td>
                 <td>￥${product.price}</td>
                 <td>${product.category}</td>
                 <td>
-                  <button class="btn btn-warning btn-sm" onclick="editProduct('${productId}')">编辑</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteProduct('${productId}')">删除</button>
+                  <button class="btn btn-warning btn-sm" onclick="editProduct('${product.id}')">编辑</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.id}')">删除</button>
                 </td>
               `;
-              productTable.querySelector('tbody').appendChild(row);
+              tbody.appendChild(row);
             });
-          });
+          } catch (error) {
+            console.error('Error loading products:', error.message);
+            tbody.innerHTML = `
+              <tr>
+                <td colspan="5" class="error-container">
+                  加载失败：${error.message}<br>
+                  <button class="btn btn-primary mt-2" onclick="loadProducts('${searchTerm}')">重试</button>
+                </td>
+              </tr>
+            `;
+          }
         }
 
         window.deleteProduct = async function(id) {
@@ -295,6 +384,7 @@
           if (confirm('确定删除此商品？')) {
             await remove(ref(db, `products/${id}`));
             alert('商品删除成功！');
+            loadProducts();
           }
         };
 
@@ -304,19 +394,18 @@
             return;
           }
           const productRef = ref(db, `products/${id}`);
-          onValue(productRef, (snapshot) => {
-            const product = snapshot.val();
-            if (product) {
-              const newName = prompt('请输入新商品名称：', product.name);
-              const newPrice = parseFloat(prompt('请输入新价格：', product.price));
-              const newDescription = prompt('请输入新描述：', product.description);
-              const newCategory = prompt('请输入新分类：', product.category);
-              const newImageUrl = prompt('请输入新图片URL：', product.imageUrl);
-              if (newName && !isNaN(newPrice) && newDescription && newCategory) {
-                updateProduct(id, newName, newPrice, newDescription, newCategory, newImageUrl);
-              }
+          const snapshot = await get(productRef);
+          const product = snapshot.val();
+          if (product) {
+            const newName = prompt('请输入新商品名称：', product.name);
+            const newPrice = parseFloat(prompt('请输入新价格：', product.price));
+            const newDescription = prompt('请输入新描述：', product.description);
+            const newCategory = prompt('请输入新分类：', product.category);
+            const newImageUrl = prompt('请输入新图片URL：', product.imageUrl);
+            if (newName && !isNaN(newPrice) && newDescription && newCategory) {
+              await updateProduct(id, newName, newPrice, newDescription, newCategory, newImageUrl);
             }
-          }, { onlyOnce: true });
+          }
         };
 
         async function updateProduct(id, name, price, description, category, imageUrl) {
@@ -329,25 +418,38 @@
             imageUrl: imageUrl || 'https://images.pexels.com/photos/3400193/pexels-photo-3400193.jpeg?auto=compress&cs=tinysrgb&w=150'
           });
           alert('商品更新成功！');
+          loadProducts();
         }
 
-        async function loadOrders() {
+        async function loadOrders(searchTerm = '', limit = 10) {
           const orderTable = document.querySelector('#order-manage table');
-          if (!orderTable) {
-            console.error('Order table not found!');
-            return;
-          }
-          orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
-          const ordersRef = ref(db, 'orders');
-          onValue(ordersRef, (snapshot) => {
-            orderTable.querySelector('tbody').innerHTML = '';
+          const tbody = orderTable.querySelector('tbody');
+          tbody.innerHTML = '<tr><td colspan="7" class="loading">加载中...</td></tr>';
+
+          try {
+            const ordersRef = ref(db, 'orders');
+            const snapshot = await get(ordersRef);
+            tbody.innerHTML = '';
             if (!snapshot.exists()) {
-              orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="7" class="loading">暂无订单。</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="7" class="loading">暂无订单。</td></tr>';
               return;
             }
+            let orders = [];
             snapshot.forEach((childSnapshot) => {
               const order = childSnapshot.val();
-              const orderId = childSnapshot.key;
+              order.id = childSnapshot.key;
+              orders.push(order);
+            });
+            if (searchTerm) {
+              orders = orders.filter(o => o.id.includes(searchTerm) || (o.customerName && o.customerName.toLowerCase().includes(searchTerm.toLowerCase())));
+            }
+            orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            orders = orders.slice(0, limit);
+            if (orders.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="7" class="loading">无匹配订单。</td></tr>';
+              return;
+            }
+            orders.forEach((order) => {
               let itemsList = '未知商品';
               if (Array.isArray(order.items)) {
                 itemsList = order.items.map(item => `${item.name} x ${item.quantity}`).join(', ');
@@ -356,23 +458,23 @@
               }
               const row = document.createElement('tr');
               row.innerHTML = `
-                <td>${orderId}</td>
+                <td>${order.id}</td>
                 <td>${order.customerName || '未知客户'}</td>
                 <td>${order.customerPhone || '无电话'}</td>
                 <td>${itemsList}</td>
                 <td>￥${order.total || 0}</td>
                 <td>${order.status || '未知'}</td>
                 <td>
-                  <button class="btn btn-success btn-sm" onclick="updateOrderStatus('${orderId}', 'completed')">完成</button>
-                  <button class="btn btn-danger btn-sm" onclick="deleteOrder('${orderId}')">删除</button>
+                  <button class="btn btn-success btn-sm" onclick="updateOrderStatus('${order.id}', 'completed')">完成</button>
+                  <button class="btn btn-danger btn-sm" onclick="deleteOrder('${order.id}')">删除</button>
                 </td>
               `;
-              orderTable.querySelector('tbody').appendChild(row);
+              tbody.appendChild(row);
             });
-          }, (error) => {
+          } catch (error) {
             console.error('Error loading orders:', error.message);
-            orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="7" class="loading">加载订单失败，请稍后重试。</td></tr>';
-          });
+            tbody.innerHTML = '<tr><td colspan="7" class="error-container">加载订单失败，请稍后重试。</td></tr>';
+          }
         }
 
         window.updateOrderStatus = async function(orderId, status) {
@@ -382,6 +484,7 @@
           }
           await update(ref(db, `orders/${orderId}`), { status });
           alert('订单状态更新成功！');
+          loadOrders();
         };
 
         window.deleteOrder = async function(orderId) {
@@ -392,7 +495,23 @@
           if (confirm('确定删除此订单？')) {
             await remove(ref(db, `orders/${orderId}`));
             alert('订单删除成功！');
+            loadOrders();
           }
+        }
+
+        // 添加搜索功能
+        const productSearchInput = document.getElementById('product-search');
+        if (productSearchInput) {
+          productSearchInput.addEventListener('input', (e) => {
+            loadProducts(e.target.value);
+          });
+        }
+
+        const orderSearchInput = document.getElementById('order-search');
+        if (orderSearchInput) {
+          orderSearchInput.addEventListener('input', (e) => {
+            loadOrders(e.target.value);
+          });
         }
 
         if (isAdmin) {
@@ -432,43 +551,60 @@
     <section id="product-manage" class="admin-section">
       <div class="container">
         <h2>商品管理</h2>
+        <div class="search-bar">
+          <input type="text" id="product-search" class="form-control mb-3" placeholder="搜索商品名称...">
+        </div>
         <button class="btn btn-primary mb-3" onclick="document.getElementById('add-product').style.display='block'">添加商品</button>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>名称</th>
-              <th>价格</th>
-              <th>分类</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 商品会通过JavaScript动态加载 -->
-          </tbody>
-        </table>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>名称</th>
+                <th>价格</th>
+                <th>分类</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 商品会通过JavaScript动态加载 -->
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
 
     <section id="order-manage" class="admin-section">
       <div class="container">
         <h2>订单管理</h2>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>客户姓名</th>
-              <th>电话号码</th>
-              <th>商品</th>
-              <th>总金额</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 订单会通过JavaScript动态加载 -->
-          </tbody>
-        </table>
+        <div class="search-bar">
+          <input type="text" id="order-search" class="form-control mb-3" placeholder="搜索订单ID或客户姓名...">
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>客户姓名</th>
+                <th>电话号码</th>
+                <th>商品</th>
+                <th>总金额</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- 订单会通过JavaScript动态加载 -->
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination">
+          <select class="form-select w-auto" id="order-limit" onchange="loadOrders(document.getElementById('order-search').value, this.value)">
+            <option value="10">10 条/页</option>
+            <option value="20">20 条/页</option>
+            <option value="50">50 条/页</option>
+          </select>
+        </div>
       </div>
     </section>
 
