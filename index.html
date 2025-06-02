@@ -26,9 +26,16 @@
       font-size: 1.5rem;
       font-weight: 700;
     }
-    .login-container {
+    .section {
+      padding: 20px;
+      background-color: #2c2c2c;
+      border-radius: 15px;
+      margin: 15px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .login-container, .add-product-form {
       max-width: 400px;
-      margin: 50px auto;
+      margin: 20px auto;
       padding: 20px;
       background-color: #333333;
       border-radius: 15px;
@@ -52,30 +59,26 @@
     .btn-primary:hover {
       background: linear-gradient(135deg, #1a1a1a 0%, #d4a373 100%);
     }
-    .order-list {
-      margin: 20px 0;
-      max-height: 500px;
-      overflow-y: auto;
+    .btn-success {
+      background: linear-gradient(135deg, #28a745 0%, #1a1a1a 100%);
+      border: none;
     }
-    .order-item {
-      background-color: #2c2c2c;
-      border-radius: 10px;
-      padding: 10px;
-      margin-bottom: 10px;
-      border: 1px solid rgba(212,163,115,0.2);
+    .btn-success:hover {
+      background: linear-gradient(135deg, #1a1a1a 0%, #218838 100%);
     }
-    @media (max-width: 768px) {
-      .login-container {
-        margin: 20px auto;
-        padding: 15px;
-      }
-      .form-control, .btn {
-        font-size: 0.9rem;
-        padding: 6px 12px;
-      }
-      .order-list {
-        max-height: 300px;
-      }
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545 0%, #1a1a1a 100%);
+      border: none;
+    }
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #1a1a1a 0%, #c82333 100%);
+    }
+    .table {
+      color: #e0c097;
+      background-color: #333333;
+    }
+    .table th, .table td {
+      border-color: rgba(212,163,115,0.2);
     }
     .loading {
       text-align: center;
@@ -83,10 +86,28 @@
       font-style: italic;
       padding: 15px;
     }
+    @media (max-width: 768px) {
+      .login-container, .add-product-form {
+        margin: 10px auto;
+        padding: 15px;
+      }
+      .form-control, .btn {
+        font-size: 0.9rem;
+        padding: 6px 12px;
+      }
+      .table {
+        font-size: 0.85rem;
+      }
+      .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+      }
+    }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, onValue, push, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAKaVwadaKpdjtYPN1qWIvh6Rkben-Y5KQ",
@@ -102,109 +123,191 @@
     try {
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
-
-      let isAuthenticated = localStorage.getItem('adminAuthenticated') === 'true';
+      const auth = getAuth(app);
 
       function showLogin() {
         document.getElementById('login-section').style.display = 'block';
-        document.getElementById('orders-section').style.display = 'none';
+        document.getElementById('main-content').style.display = 'none';
       }
 
-      function showOrders() {
+      function showMainContent() {
         document.getElementById('login-section').style.display = 'none';
-        document.getElementById('orders-section').style.display = 'block';
+        document.getElementById('main-content').style.display = 'block';
+        loadProducts();
         loadOrders();
       }
 
-      document.addEventListener('DOMContentLoaded', () => {
-        if (isAuthenticated) {
-          showOrders();
-        } else {
+      window.logout = function() {
+        signOut(auth).then(() => {
           showLogin();
+          alert('已退出登录');
+        }).catch((error) => {
+          console.error('Logout failed:', error.message);
+          alert('退出登录失败：' + error.message);
+        });
+      };
+
+      window.markAsCompleted = function(orderId) {
+        const orderRef = ref(db, `orders/${orderId}`);
+        update(orderRef, { status: 'completed' }).then(() => {
+          console.log('Order marked as completed:', orderId);
+        }).catch((error) => {
+          console.error('Error updating order status:', error.message);
+          alert('更新订单状态失败：' + error.message);
+        });
+      };
+
+      window.deleteProduct = function(productId) {
+        const productRef = ref(db, `products/${productId}`);
+        set(productRef, null).then(() => {
+          console.log('Product deleted:', productId);
+        }).catch((error) => {
+          console.error('Error deleting product:', error.message);
+          alert('删除商品失败：' + error.message);
+        });
+      };
+
+      window.saveProduct = function() {
+        const id = document.getElementById('product-id').value.trim();
+        const name = document.getElementById('product-name').value.trim();
+        const price = parseFloat(document.getElementById('product-price').value) || 0;
+        const description = document.getElementById('product-description').value.trim();
+        const category = document.getElementById('product-category').value;
+        const imageUrl = document.getElementById('product-image').value.trim();
+
+        if (!name || !price || !category) {
+          alert('请填写必填项（名称、价格、分类）！');
+          return;
         }
+
+        const productData = { name, price, description, category, imageUrl };
+        const productRef = id ? ref(db, `products/${id}`) : push(ref(db, 'products'));
+        set(productRef, productData).then(() => {
+          console.log('Product saved:', id || productRef.key);
+          alert('商品保存成功！');
+          document.getElementById('add-product-form').reset();
+          document.getElementById('add-product-modal').style.display = 'none';
+          loadProducts();
+        }).catch((error) => {
+          console.error('Error saving product:', error.message);
+          alert('保存商品失败：' + error.message);
+        });
+      };
+
+      function loadProducts() {
+        const productTable = document.getElementById('product-table-body');
+        if (productTable) {
+          productTable.innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
+          const productsRef = ref(db, 'products');
+          onValue(productsRef, (snapshot) => {
+            productTable.innerHTML = '';
+            if (snapshot.exists()) {
+              snapshot.forEach((childSnapshot) => {
+                const product = childSnapshot.val();
+                const productId = childSnapshot.key;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td>${productId}</td>
+                  <td>${product.name || '未知'}</td>
+                  <td>￥${product.price || 0}</td>
+                  <td>${product.category || '未知'}</td>
+                  <td><button class="btn btn-danger btn-sm" onclick="deleteProduct('${productId}')">删除</button></td>
+                `;
+                productTable.appendChild(row);
+              });
+            } else {
+              productTable.innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
+            }
+          }, (error) => {
+            console.error('Error loading products:', error.message);
+            productTable.innerHTML = `<tr><td colspan="5" class="loading">加载商品失败：${error.message}</td></tr>`;
+          });
+        }
+      }
+
+      function loadOrders() {
+        const orderTable = document.getElementById('order-table-body');
+        if (orderTable) {
+          orderTable.innerHTML = '<tr><td colspan="6" class="loading">加载中...</td></tr>';
+          const ordersRef = ref(db, 'orders');
+          onValue(ordersRef, (snapshot) => {
+            orderTable.innerHTML = '';
+            if (snapshot.exists()) {
+              snapshot.forEach((childSnapshot) => {
+                const order = childSnapshot.val();
+                const orderId = childSnapshot.key;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                  <td>${order.orderNumber || orderId}</td>
+                  <td>${order.customerName || '未知'}</td>
+                  <td>${order.customerPhone || '无'}</td>
+                  <td>￥${order.total || 0}</td>
+                  <td>${order.status || 'pending'}</td>
+                  <td><button class="btn btn-success btn-sm" onclick="markAsCompleted('${orderId}')">${order.status !== 'completed' ? '标记为已完成' : '已完成'}</button></td>
+                `;
+                orderTable.appendChild(row);
+              });
+            } else {
+              orderTable.innerHTML = '<tr><td colspan="6" class="loading">暂无订单。</td></tr>';
+            }
+          }, (error) => {
+            console.error('Error loading orders:', error.message);
+            orderTable.innerHTML = `<tr><td colspan="6" class="loading">加载订单失败：${error.message}</td></tr>`;
+          });
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        auth.onAuthStateChanged((user) => {
+          if (user) {
+            showMainContent();
+          } else {
+            showLogin();
+          }
+        });
 
         const loginButton = document.getElementById('login-button');
         if (loginButton) {
           loginButton.addEventListener('click', () => {
-            const username = document.getElementById('username').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
-            if (username === 'admin' && password === 'admin123') {
-              isAuthenticated = true;
-              localStorage.setItem('adminAuthenticated', 'true');
-              showOrders();
-            } else {
-              alert('用户名或密码错误！');
+            if (!email || !password) {
+              alert('请填写邮箱和密码！');
+              return;
             }
+            signInWithEmailAndPassword(auth, email, password)
+              .then(() => {
+                showMainContent();
+              })
+              .catch((error) => {
+                console.error('Login failed:', error.message);
+                alert('登录失败：' + error.message);
+              });
           });
         }
 
-        // 实时监听订单
-        const ordersRef = ref(db, 'orders');
-        onValue(ordersRef, (snapshot) => {
-          const ordersList = document.getElementById('orders-list');
-          if (ordersList) {
-            ordersList.innerHTML = '';
-            if (snapshot.exists()) {
-              snapshot.forEach((childSnapshot) => {
-                const order = childSnapshot.val();
-                const orderId = childSnapshot.key;
-                const li = document.createElement('div');
-                li.className = 'order-item';
-                li.innerHTML = `
-                  取餐号: ${order.orderNumber || orderId}<br>
-                  客户姓名: ${order.customerName || '未知'}<br>
-                  电话: ${order.customerPhone || '无'}<br>
-                  总金额: ￥${order.total || 0}<br>
-                  状态: ${order.status || '未知'}<br>
-                  时间: ${order.createdAt || '无记录'}
-                `;
-                ordersList.appendChild(li);
-              });
-            } else {
-              ordersList.innerHTML = '<div class="order-item">暂无订单。</div>';
-            }
-          }
-        }, (error) => {
-          console.error('Error loading orders:', error.message);
-          const ordersList = document.getElementById('orders-list');
-          if (ordersList) {
-            ordersList.innerHTML = `<div class="order-item">加载订单失败：${error.message}</div>`;
-          }
-        });
+        const addProductButton = document.getElementById('add-product-button');
+        if (addProductButton) {
+          addProductButton.addEventListener('click', () => {
+            document.getElementById('add-product-modal').style.display = 'block';
+          });
+        }
+
+        const cancelButton = document.getElementById('cancel-button');
+        if (cancelButton) {
+          cancelButton.addEventListener('click', () => {
+            document.getElementById('add-product-form').reset();
+            document.getElementById('add-product-modal').style.display = 'none';
+          });
+        }
+
+        const homeButton = document.getElementById('home-button');
+        if (homeButton) {
+          homeButton.addEventListener('click', () => {
+            window.location.href = '/';
+          });
+        }
       });
-
-      function loadOrders() {
-        const ordersList = document.getElementById('orders-list');
-        if (ordersList) {
-          ordersList.innerHTML = '<div class="loading">加载中...</div>';
-          const ordersRef = ref(db, 'orders');
-          get(ordersRef).then((snapshot) => {
-            ordersList.innerHTML = '';
-            if (snapshot.exists()) {
-              snapshot.forEach((childSnapshot) => {
-                const order = childSnapshot.val();
-                const orderId = childSnapshot.key;
-                const li = document.createElement('div');
-                li.className = 'order-item';
-                li.innerHTML = `
-                  取餐号: ${order.orderNumber || orderId}<br>
-                  客户姓名: ${order.customerName || '未知'}<br>
-                  电话: ${order.customerPhone || '无'}<br>
-                  总金额: ￥${order.total || 0}<br>
-                  状态: ${order.status || '未知'}<br>
-                  时间: ${order.createdAt || '无记录'}
-                `;
-                ordersList.appendChild(li);
-              });
-            } else {
-              ordersList.innerHTML = '<div class="order-item">暂无订单。</div>';
-            }
-          }).catch((error) => {
-            console.error('Error loading orders:', error.message);
-            ordersList.innerHTML = `<div class="order-item">加载订单失败：${error.message}</div>`;
-          });
-        }
-      }
     } catch (error) {
       console.error('Firebase initialization failed:', error);
       alert('Firebase 初始化失败，请检查配置或网络！');
@@ -214,31 +317,101 @@
 <body>
   <nav class="navbar navbar-expand-lg">
     <div class="container">
-      <a class="navbar-brand" href="/">Muphy Coffee - 后台管理</a>
+      <a class="navbar-brand" href="#">Muphy Coffee - 后台管理</a>
+      <button class="btn btn-primary ms-auto" id="logout-button" onclick="logout()">退出登录</button>
     </div>
   </nav>
 
-  <div id="login-section" style="display: none;">
+  <div id="login-section" class="section">
     <div class="login-container">
       <h2>管理员登录</h2>
       <form>
         <div class="mb-3">
-          <label for="username" class="form-label">用户名</label>
-          <input type="text" class="form-control" id="username" required>
+          <label for="email" class="form-label">邮箱</label>
+          <input type="email" class="form-control" id="email" placeholder="admin@example.com" required>
         </div>
         <div class="mb-3">
           <label for="password" class="form-label">密码</label>
           <input type="password" class="form-control" id="password" required>
         </div>
         <button type="button" id="login-button" class="btn btn-primary w-100">登录</button>
+        <button type="button" id="home-button" class="btn btn-secondary mt-2 w-100">返回主页</button>
       </form>
     </div>
   </div>
 
-  <div id="orders-section" style="display: none; padding: 20px;">
-    <h2>订单管理</h2>
-    <div class="order-list" id="orders-list">
-      <div class="loading">加载中...</div>
+  <div id="main-content" class="section" style="display: none;">
+    <h2>商品管理</h2>
+    <button id="add-product-button" class="btn btn-primary mb-3">添加商品</button>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>名称</th>
+          <th>价格</th>
+          <th>分类</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="product-table-body">
+        <tr><td colspan="5" class="loading">加载中...</td></tr>
+      </tbody>
+    </table>
+
+    <h2 class="mt-5">订单管理</h2>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>客户姓名</th>
+          <th>电话号码</th>
+          <th>总金额</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="order-table-body">
+        <tr><td colspan="6" class="loading">加载中...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="add-product-modal" class="section" style="display: none;">
+    <div class="add-product-form">
+      <h2>添加商品</h2>
+      <form id="add-product-form">
+        <div class="mb-3">
+          <label for="product-id" class="form-label">ID</label>
+          <input type="text" class="form-control" id="product-id" placeholder="留空以自动生成">
+        </div>
+        <div class="mb-3">
+          <label for="product-name" class="form-label">商品名称</label>
+          <input type="text" class="form-control" id="product-name" required>
+        </div>
+        <div class="mb-3">
+          <label for="product-price" class="form-label">价格</label>
+          <input type="number" class="form-control" id="product-price" step="0.01" required>
+        </div>
+        <div class="mb-3">
+          <label for="product-description" class="form-label">商品描述</label>
+          <input type="text" class="form-control" id="product-description">
+        </div>
+        <div class="mb-3">
+          <label for="product-category" class="form-label">分类</label>
+          <select class="form-control" id="product-category" required>
+            <option value="特色咖啡">特色咖啡</option>
+            <option value="茶类饮品">茶类饮品</option>
+            <option value="甜点蛋糕">甜点蛋糕</option>
+            <option value="简餐小食">简餐小食</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="product-image" class="form-label">图片 URL</label>
+          <input type="url" class="form-control" id="product-image">
+        </div>
+        <button type="button" id="save-button" class="btn btn-success w-100" onclick="saveProduct()">保存</button>
+        <button type="button" id="cancel-button" class="btn btn-secondary mt-2 w-100">取消</button>
+      </form>
     </div>
   </div>
 
