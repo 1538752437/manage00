@@ -45,6 +45,7 @@
       background-color: #444444;
       color: #e0c097;
       border: 1px solid rgba(212,163,115,0.2);
+      touch-action: manipulation;
     }
     .form-control:focus {
       background-color: #444444;
@@ -55,6 +56,7 @@
     .btn-primary {
       background: linear-gradient(135deg, #d4a373 0%, #1a1a1a 100%);
       border: none;
+      padding: 10px;
     }
     .btn-primary:hover {
       background: linear-gradient(135deg, #1a1a1a 0%, #d4a373 100%);
@@ -72,6 +74,14 @@
     }
     .btn-danger:hover {
       background: linear-gradient(135deg, #1a1a1a 0%, #c82333 100%);
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d 0%, #1a1a1a 100%);
+      border: none;
+      padding: 10px;
+    }
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #1a1a1a 0%, #5a6268 100%);
     }
     .table {
       color: #e0c097;
@@ -93,7 +103,7 @@
       }
       .form-control, .btn {
         font-size: 0.9rem;
-        padding: 6px 12px;
+        padding: 8px;
       }
       .table {
         font-size: 0.85rem;
@@ -101,6 +111,20 @@
       .btn-sm {
         padding: 4px 8px;
         font-size: 0.8rem;
+      }
+      .navbar-brand {
+        font-size: 1.2rem;
+      }
+    }
+    @media (max-width: 576px) {
+      .login-container, .add-product-form {
+        max-width: 100%;
+        margin: 5px;
+        padding: 10px;
+      }
+      .form-control, .btn {
+        font-size: 0.85rem;
+        padding: 6px;
       }
     }
   </style>
@@ -128,6 +152,7 @@
       function showLogin() {
         document.getElementById('login-section').style.display = 'block';
         document.getElementById('main-content').style.display = 'none';
+        document.getElementById('add-product-modal').style.display = 'none';
       }
 
       function showMainContent() {
@@ -219,7 +244,7 @@
               productTable.innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
             }
           }, (error) => {
-            console.error('Error loading products:', error.message);
+            console.error('Error loading products:', error.message, error.code);
             productTable.innerHTML = `<tr><td colspan="5" class="loading">加载商品失败：${error.message}</td></tr>`;
           });
         }
@@ -251,7 +276,7 @@
               orderTable.innerHTML = '<tr><td colspan="6" class="loading">暂无订单。</td></tr>';
             }
           }, (error) => {
-            console.error('Error loading orders:', error.message);
+            console.error('Error loading orders:', error.message, error.code);
             orderTable.innerHTML = `<tr><td colspan="6" class="loading">加载订单失败：${error.message}</td></tr>`;
           });
         }
@@ -260,8 +285,10 @@
       document.addEventListener('DOMContentLoaded', () => {
         auth.onAuthStateChanged((user) => {
           if (user) {
+            console.log('User authenticated:', user.email);
             showMainContent();
           } else {
+            console.log('No user authenticated');
             showLogin();
           }
         });
@@ -269,18 +296,21 @@
         const loginButton = document.getElementById('login-button');
         if (loginButton) {
           loginButton.addEventListener('click', () => {
+            console.log('Login button clicked');
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
+            console.log('Login attempt with email:', email);
             if (!email || !password) {
               alert('请填写邮箱和密码！');
               return;
             }
             signInWithEmailAndPassword(auth, email, password)
-              .then(() => {
+              .then((userCredential) => {
+                console.log('Login successful:', userCredential.user.email);
                 showMainContent();
               })
               .catch((error) => {
-                console.error('Login failed:', error.message);
+                console.error('Login failed:', error.message, error.code);
                 alert('登录失败：' + error.message);
               });
           });
@@ -289,6 +319,7 @@
         const addProductButton = document.getElementById('add-product-button');
         if (addProductButton) {
           addProductButton.addEventListener('click', () => {
+            console.log('Add product button clicked');
             document.getElementById('add-product-modal').style.display = 'block';
           });
         }
@@ -335,7 +366,7 @@
           <input type="password" class="form-control" id="password" required>
         </div>
         <button type="button" id="login-button" class="btn btn-primary w-100">登录</button>
-        <button type="button" id="home-button" class="btn btn-secondary mt-2 w-100">返回主页</button>
+        <button type="button" id="home-button" class="btn btn-secondary w-100 mt-2">返回主页</button>
       </form>
     </div>
   </div>
@@ -410,7 +441,7 @@
           <input type="url" class="form-control" id="product-image">
         </div>
         <button type="button" id="save-button" class="btn btn-success w-100" onclick="saveProduct()">保存</button>
-        <button type="button" id="cancel-button" class="btn btn-secondary mt-2 w-100">取消</button>
+        <button type="button" id="cancel-button" class="btn btn-secondary w-100 mt-2">取消</button>
       </form>
     </div>
   </div>
