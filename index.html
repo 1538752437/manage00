@@ -130,7 +130,7 @@
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, onValue, push, update, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, onValue, push, update, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
     import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const firebaseConfig = {
@@ -189,6 +189,16 @@
         }).catch((error) => {
           console.error('Error deleting product:', error.message);
           alert('删除商品失败：' + error.message);
+        });
+      };
+
+      window.deleteOrder = function(orderId) {
+        const orderRef = ref(db, `orders/${orderId}`);
+        remove(orderRef).then(() => {
+          console.log('Order deleted:', orderId);
+        }).catch((error) => {
+          console.error('Error deleting order:', error.message);
+          alert('删除订单失败：' + error.message);
         });
       };
 
@@ -268,7 +278,10 @@
                   <td>${order.customerPhone || '无'}</td>
                   <td>￥${order.total || 0}</td>
                   <td>${order.status || 'pending'}</td>
-                  <td><button class="btn btn-success btn-sm" onclick="markAsCompleted('${orderId}')">${order.status !== 'completed' ? '标记为已完成' : '已完成'}</button></td>
+                  <td>
+                    <button class="btn btn-success btn-sm me-2" onclick="markAsCompleted('${orderId}')">${order.status !== 'completed' ? '标记为已完成' : '已完成'}</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteOrder('${orderId}')">删除</button>
+                  </td>
                 `;
                 orderTable.appendChild(row);
               });
@@ -296,7 +309,7 @@
         const loginButton = document.getElementById('login-button');
         if (loginButton) {
           loginButton.addEventListener('click', () => {
-            console.log('Login button clicked');
+            console.log('Login button clicked on device:', navigator.userAgent);
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value.trim();
             console.log('Login attempt with email:', email);
@@ -313,6 +326,10 @@
                 console.error('Login failed:', error.message, error.code);
                 alert('登录失败：' + error.message);
               });
+          });
+          loginButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            loginButton.click();
           });
         }
 
