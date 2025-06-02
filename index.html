@@ -2,27 +2,140 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Muphy Coffee - 管理员界面</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Muphy Coffee - 后台管理</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Arial', sans-serif; background-color: #f8f9fa; color: #333; }
-    .admin-section { padding: 40px 0; background-color: #fff; border-radius: 10px; margin: 20px 0; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-    .btn-primary { background-color: #6f4e37; border-color: #6f4e37; }
-    .btn-primary:hover { background-color: #5a3f2d; border-color: #5a3f2d; }
-    .btn-success { background-color: #28a745; border-color: #28a745; }
-    .btn-success:hover { background-color: #218838; border-color: #218838; }
-    .btn-danger { background-color: #dc3545; border-color: #dc3545; }
-    .btn-danger:hover { background-color: #c82333; border-color: #c82333; }
-    .table { background-color: #fff; }
-    .loading { text-align: center; color: #6f4e37; font-style: italic; }
-    #admin-sections { display: none; }
+    body {
+      font-family: 'Lato', sans-serif;
+      background-color: #1a1a1a;
+      color: #e0c097;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+    .navbar {
+      background: linear-gradient(135deg, #1a1a1a 0%, #d4a373 100%);
+      padding: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .navbar-brand {
+      color: #e0c097 !important;
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .section {
+      padding: 20px;
+      background-color: #2c2c2c;
+      border-radius: 15px;
+      margin: 15px 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .login-container, .add-product-form {
+      max-width: 400px;
+      margin: 20px auto;
+      padding: 20px;
+      background-color: #333333;
+      border-radius: 15px;
+      box-shadow: 0 6px 20px rgba(212,163,115,0.1);
+    }
+    .form-control {
+      background-color: #444444;
+      color: #e0c097;
+      border: 1px solid rgba(212,163,115,0.2);
+      touch-action: manipulation;
+    }
+    .form-control:focus {
+      background-color: #444444;
+      color: #e0c097;
+      border-color: #d4a373;
+      box-shadow: 0 0 5px rgba(212,163,115,0.3);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #d4a373 0%, #1a1a1a 100%);
+      border: none;
+      padding: 10px;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #1a1a1a 0%, #d4a373 100%);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #28a745 0%, #1a1a1a 100%);
+      border: none;
+    }
+    .btn-success:hover {
+      background: linear-gradient(135deg, #1a1a1a 0%, #218838 100%);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545 0%, #1a1a1a 100%);
+      border: none;
+    }
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #1a1a1a 0%, #c82333 100%);
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d 0%, #1a1a1a 100%);
+      border: none;
+      padding: 10px;
+    }
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #1a1a1a 0%, #5a6268 100%);
+    }
+    .table {
+      color: #e0c097;
+      background-color: #333333;
+    }
+    .table th, .table td {
+      border-color: rgba(212,163,115,0.2);
+    }
+    .loading {
+      text-align: center;
+      color: #d4a373;
+      font-style: italic;
+      padding: 15px;
+    }
+    .items-list {
+      margin: 5px 0;
+      font-size: 0.9rem;
+    }
+    @media (max-width: 768px) {
+      .login-container, .add-product-form {
+        margin: 10px auto;
+        padding: 15px;
+      }
+      .form-control, .btn {
+        font-size: 0.9rem;
+        padding: 8px;
+      }
+      .table {
+        font-size: 0.85rem;
+      }
+      .btn-sm {
+        padding: 4px 8px;
+        font-size: 0.8rem;
+      }
+      .navbar-brand {
+        font-size: 1.2rem;
+      }
+    }
+    @media (max-width: 576px) {
+      .login-container, .add-product-form {
+        max-width: 100%;
+        margin: 5px;
+        padding: 10px;
+      }
+      .form-control, .btn {
+        font-size: 0.85rem;
+        padding: 6px;
+      }
+    }
   </style>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
-    import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-    import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getDatabase, ref, onValue, push, update, set, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAKaVwadaKpdjtYPN1qWIvh6Rkben-Y5KQ",
@@ -36,300 +149,228 @@
     };
 
     try {
-      console.log('Initializing Firebase...');
       const app = initializeApp(firebaseConfig);
-      console.log('Firebase initialized successfully:', app);
-      const analytics = getAnalytics(app);
       const db = getDatabase(app);
       const auth = getAuth(app);
-      console.log('Firebase services initialized:', { analytics, db, auth });
 
-      let isAdmin = false;
+      function showLogin() {
+        document.getElementById('login-section').style.display = 'block';
+        document.getElementById('main-content').style.display = 'none';
+        document.getElementById('add-product-modal').style.display = 'none';
+      }
 
-      async function initializeAppLogic() {
-        console.log('Starting application logic...');
+      function showMainContent() {
+        document.getElementById('login-section').style.display = 'none';
+        document.getElementById('main-content').style.display = 'block';
+        loadProducts();
+        loadOrders();
+      }
 
-        const loginContainer = document.getElementById('admin-login');
-        if (!loginContainer) {
-          console.error('Login container not found in DOM!');
+      window.logout = function() {
+        signOut(auth).then(() => {
+          showLogin();
+          alert('已退出登录');
+        }).catch((error) => {
+          console.error('Logout failed:', error.message);
+          alert('退出登录失败：' + error.message);
+        });
+      };
+
+      window.markAsCompleted = function(orderId) {
+        const orderRef = ref(db, `orders/${orderId}`);
+        update(orderRef, { status: 'completed' }).then(() => {
+          console.log('Order marked as completed:', orderId);
+        }).catch((error) => {
+          console.error('Error updating order status:', error.message);
+          alert('更新订单状态失败：' + error.message);
+        });
+      };
+
+      window.deleteProduct = function(productId) {
+        const productRef = ref(db, `products/${productId}`);
+        set(productRef, null).then(() => {
+          console.log('Product deleted:', productId);
+        }).catch((error) => {
+          console.error('Error deleting product:', error.message);
+          alert('删除商品失败：' + error.message);
+        });
+      };
+
+      window.deleteOrder = function(orderId) {
+        const orderRef = ref(db, `orders/${orderId}`);
+        remove(orderRef).then(() => {
+          console.log('Order deleted:', orderId);
+        }).catch((error) => {
+          console.error('Error deleting order:', error.message);
+          alert('删除订单失败：' + error.message);
+        });
+      };
+
+      window.saveProduct = function() {
+        const id = document.getElementById('product-id').value.trim();
+        const name = document.getElementById('product-name').value.trim();
+        const price = parseFloat(document.getElementById('product-price').value) || 0;
+        const description = document.getElementById('product-description').value.trim();
+        const category = document.getElementById('product-category').value;
+        const imageUrl = document.getElementById('product-image').value.trim();
+
+        if (!name || !price || !category) {
+          alert('请填写必填项（名称、价格、分类）！');
           return;
         }
-        const loginForm = loginContainer.querySelector('form');
-        if (!loginForm) {
-          console.error('Login form not found in DOM!');
-          return;
-        }
-        console.log('Login form found, attaching submit event listener...');
-        loginForm.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          console.log('Login form submitted at', new Date().toISOString());
-          const emailInput = loginContainer.querySelector('input[type="email"]');
-          const passwordInput = loginContainer.querySelector('input[type="password"]');
-          if (!emailInput || !passwordInput) {
-            console.error('Email or password input not found!');
-            alert('表单元素缺失，请检查页面！');
-            return;
-          }
-          const email = emailInput.value.trim();
-          const password = passwordInput.value.trim();
-          console.log('Login attempt with:', { email, passwordLength: password.length });
-          if (!email || !password) {
-            console.warn('Empty email or password');
-            alert('请输入邮箱和密码！');
-            return;
-          }
-          try {
-            console.log('Calling signInWithEmailAndPassword...');
-            const userCredential = await signInWithEmailAndPassword(auth, email, password);
-            console.log('Login successful, user:', userCredential.user);
-            isAdmin = true;
-            alert('登录成功！');
-            loginContainer.style.display = 'none';
-            document.getElementById('admin-sections').style.display = 'block';
-            const logoutButton = document.createElement('button');
-            logoutButton.type = 'button';
-            logoutButton.textContent = '退出登录';
-            logoutButton.className = 'btn btn-secondary mt-3';
-            loginContainer.appendChild(logoutButton);
-            logoutButton.addEventListener('click', async () => {
-              try {
-                await signOut(auth);
-                console.log('Logged out successfully');
-                alert('已退出登录！');
-                isAdmin = false;
-                document.getElementById('admin-sections').style.display = 'none';
-                loginContainer.style.display = 'block';
-                logoutButton.remove();
-              } catch (error) {
-                console.error('Logout failed:', error.message);
-                alert('退出登录失败：' + error.message);
-              }
-            });
-            logoutButton.style.display = 'block';
-            await loadProducts();
-            await loadOrders();
-          } catch (error) {
-            console.error('Login failed:', error.code, error.message);
-            alert('登录失败：' + error.message);
-          }
+
+        const productData = { name, price, description, category, imageUrl };
+        const productRef = id ? ref(db, `products/${id}`) : push(ref(db, 'products'));
+        set(productRef, productData).then(() => {
+          console.log('Product saved:', id || productRef.key);
+          alert('商品保存成功！');
+          document.getElementById('add-product-form').reset();
+          document.getElementById('add-product-modal').style.display = 'none';
+          loadProducts();
+        }).catch((error) => {
+          console.error('Error saving product:', error.message);
+          alert('保存商品失败：' + error.message);
         });
+      };
 
-        onAuthStateChanged(auth, (user) => {
-          console.log('Auth state changed, user:', user ? user.uid : 'none');
-          const logoutButton = loginContainer.querySelector('button[type="button"]');
-          if (user) {
-            isAdmin = true;
-            document.getElementById('admin-sections').style.display = 'block';
-            loginContainer.style.display = 'none';
-            if (logoutButton) logoutButton.style.display = 'block';
-            loadProducts();
-            loadOrders();
-          } else {
-            isAdmin = false;
-            document.getElementById('admin-sections').style.display = 'none';
-            loginContainer.style.display = 'block';
-            if (logoutButton) logoutButton.style.display = 'none';
-          }
-        });
-
-        const addProductForm = document.querySelector('#add-product form');
-        if (addProductForm) {
-          addProductForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (!isAdmin) {
-              alert('请先登录管理员账户！');
-              return;
-            }
-            const name = document.querySelector('#add-product input[name="name"]').value.trim();
-            const price = parseFloat(document.querySelector('#add-product input[name="price"]').value);
-            const description = document.querySelector('#add-product textarea[name="description"]').value.trim();
-            const category = document.querySelector('#add-product select[name="category"]').value;
-            const imageUrl = document.querySelector('#add-product input[name="imageUrl"]').value.trim();
-            if (!name || isNaN(price) || !description || !category) {
-              alert('请填写所有必填字段！');
-              return;
-            }
-            try {
-              await push(ref(db, 'products'), {
-                name, price, description, category,
-                imageUrl: imageUrl || 'https://picsum.photos/150/150',
-                createdAt: new Date().toISOString()
-              });
-              alert('商品添加成功！');
-              addProductForm.reset();
-              loadProducts();
-            } catch (error) {
-              alert('添加失败：' + error.message);
-            }
-          });
-        }
-
-        async function loadProducts() {
-          const productTable = document.querySelector('#product-manage table');
-          if (!productTable) return;
-          productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
-
-          try {
-            const productsRef = ref(db, 'products');
-            onValue(productsRef, (snapshot) => {
-              productTable.querySelector('tbody').innerHTML = '';
-              if (!snapshot.exists()) {
-                productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
-                return;
-              }
+      function loadProducts() {
+        const productTable = document.getElementById('product-table-body');
+        if (productTable) {
+          productTable.innerHTML = '<tr><td colspan="5" class="loading">加载中...</td></tr>';
+          const productsRef = ref(db, 'products');
+          onValue(productsRef, (snapshot) => {
+            productTable.innerHTML = '';
+            if (snapshot.exists()) {
               snapshot.forEach((childSnapshot) => {
                 const product = childSnapshot.val();
                 const productId = childSnapshot.key;
                 const row = document.createElement('tr');
                 row.innerHTML = `
                   <td>${productId}</td>
-                  <td>${product.name}</td>
-                  <td>￥${product.price}</td>
-                  <td>${product.category}</td>
-                  <td>
-                    <button class="btn btn-warning btn-sm" onclick="editProduct('${productId}')">编辑</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteProduct('${productId}')">删除</button>
-                  </td>
+                  <td>${product.name || '未知'}</td>
+                  <td>￥${product.price || 0}</td>
+                  <td>${product.category || '未知'}</td>
+                  <td><button class="btn btn-danger btn-sm" onclick="deleteProduct('${productId}')">删除</button></td>
                 `;
-                productTable.querySelector('tbody').appendChild(row);
+                productTable.appendChild(row);
               });
-            }, (error) => {
-              console.error('Error loading products:', error.message);
-              productTable.querySelector('tbody').innerHTML = '<tr><td colspan="5" class="loading">加载商品失败，请稍后重试。</td></tr>';
-            });
-          } catch (error) {
-            console.error('Error in loadProducts:', error.message);
-          }
-        }
-
-        window.deleteProduct = async function(id) {
-          if (!isAdmin) {
-            alert('请先登录管理员账户！');
-            return;
-          }
-          if (confirm('确定删除此商品？')) {
-            try {
-              await remove(ref(db, `products/${id}`));
-              alert('商品删除成功！');
-            } catch (error) {
-              alert('删除失败：' + error.message);
+            } else {
+              productTable.innerHTML = '<tr><td colspan="5" class="loading">暂无商品。</td></tr>';
             }
-          }
-        };
-
-        window.editProduct = async function(id) {
-          if (!isAdmin) {
-            alert('请先登录管理员账户！');
-            return;
-          }
-          const productRef = ref(db, `products/${id}`);
-          onValue(productRef, (snapshot) => {
-            const product = snapshot.val();
-            if (product) {
-              const newName = prompt('请输入新商品名称：', product.name);
-              const newPrice = parseFloat(prompt('请输入新价格：', product.price));
-              const newDescription = prompt('请输入新描述：', product.description);
-              const newCategory = prompt('请输入新分类：', product.category);
-              const newImageUrl = prompt('请输入新图片URL：', product.imageUrl);
-              if (newName && !isNaN(newPrice) && newDescription && newCategory) {
-                updateProduct(id, newName, newPrice, newDescription, newCategory, newImageUrl);
-              }
-            }
-          }, { onlyOnce: true });
-        };
-
-        async function updateProduct(id, name, price, description, category, imageUrl) {
-          if (!isAdmin) {
-            alert('请先登录管理员账户！');
-            return;
-          }
-          try {
-            await update(ref(db, `products/${id}`), {
-              name, price, description, category,
-              imageUrl: imageUrl || 'https://picsum.photos/150/150'
-            });
-            alert('商品更新成功！');
-          } catch (error) {
-            alert('更新失败：' + error.message);
-          }
+          }, (error) => {
+            console.error('Error loading products:', error.message, error.code);
+            productTable.innerHTML = `<tr><td colspan="5" class="loading">加载商品失败：${error.message}</td></tr>`;
+          });
         }
+      }
 
-        async function loadOrders() {
-          const orderTable = document.querySelector('#order-manage table');
-          if (!orderTable) return;
-          orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="6" class="loading">加载中...</td></tr>';
-
-          try {
-            const ordersRef = ref(db, 'orders');
-            onValue(ordersRef, (snapshot) => {
-              orderTable.querySelector('tbody').innerHTML = '';
-              if (!snapshot.exists()) {
-                orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="6" class="loading">暂无订单。</td></tr>';
-                return;
-              }
+      function loadOrders() {
+        const orderTable = document.getElementById('order-table-body');
+        if (orderTable) {
+          orderTable.innerHTML = '<tr><td colspan="6" class="loading">加载中...</td></tr>';
+          const ordersRef = ref(db, 'orders');
+          onValue(ordersRef, (snapshot) => {
+            orderTable.innerHTML = '';
+            if (snapshot.exists()) {
               snapshot.forEach((childSnapshot) => {
                 const order = childSnapshot.val();
                 const orderId = childSnapshot.key;
+                let itemsHtml = '<ul class="items-list">';
+                if (order.items && Array.isArray(order.items)) {
+                  order.items.forEach(item => {
+                    itemsHtml += `<li>${item.name} x${item.quantity} - ￥${item.price}</li>`;
+                  });
+                } else {
+                  itemsHtml += '<li>无商品详情</li>';
+                }
+                itemsHtml += '</ul>';
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                  <td>${orderId}</td>
-                  <td>${order.customerName || '未知客户'}</td>
-                  <td>${order.customerPhone || '无电话'}</td>
+                  <td>${order.orderNumber || orderId}</td>
+                  <td>${order.customerName || '未知'}</td>
+                  <td>${order.customerPhone || '无'}</td>
                   <td>￥${order.total || 0}</td>
-                  <td>${order.status || '未知'}</td>
+                  <td>${order.status || 'pending'}</td>
                   <td>
-                    <button class="btn btn-success btn-sm" onclick="updateOrderStatus('${orderId}', 'completed')">完成</button>
+                    <button class="btn btn-success btn-sm me-2" onclick="markAsCompleted('${orderId}')">${order.status !== 'completed' ? '标记为已完成' : '已完成'}</button>
                     <button class="btn btn-danger btn-sm" onclick="deleteOrder('${orderId}')">删除</button>
                   </td>
                 `;
-                orderTable.querySelector('tbody').appendChild(row);
+                const itemsCell = row.insertCell(1); // 在客户姓名后插入商品详情
+                itemsCell.innerHTML = itemsHtml;
+                itemsCell.colSpan = 1; // 调整列跨度
+                orderTable.appendChild(row);
               });
-            }, (error) => {
-              console.error('Error loading orders:', error.message);
-              orderTable.querySelector('tbody').innerHTML = '<tr><td colspan="6" class="loading">加载订单失败，请稍后重试。</td></tr>';
-            });
-          } catch (error) {
-            console.error('Error in loadOrders:', error.message);
-          }
-        }
-
-        window.updateOrderStatus = async function(orderId, status) {
-          if (!isAdmin) {
-            alert('请先登录管理员账户！');
-            return;
-          }
-          try {
-            await update(ref(db, `orders/${orderId}`), { status });
-            alert('订单状态更新成功！');
-          } catch (error) {
-            alert('更新失败：' + error.message);
-          }
-        };
-
-        window.deleteOrder = async function(orderId) {
-          if (!isAdmin) {
-            alert('请先登录管理员账户！');
-            return;
-          }
-          if (confirm('确定删除此订单？')) {
-            try {
-              await remove(ref(db, `orders/${orderId}`));
-              alert('订单删除成功！');
-            } catch (error) {
-              alert('删除失败：' + error.message);
+            } else {
+              orderTable.innerHTML = '<tr><td colspan="6" class="loading">暂无订单。</td></tr>';
             }
-          }
-        }
-
-        if (isAdmin) {
-          loadProducts();
-          loadOrders();
+          }, (error) => {
+            console.error('Error loading orders:', error.message, error.code);
+            orderTable.innerHTML = `<tr><td colspan="6" class="loading">加载订单失败：${error.message}</td></tr>`;
+          });
         }
       }
 
       document.addEventListener('DOMContentLoaded', () => {
-        console.log('DOM fully loaded at', new Date().toISOString());
-        initializeAppLogic().catch(error => console.error('Application initialization failed:', error));
+        auth.onAuthStateChanged((user) => {
+          if (user) {
+            console.log('User authenticated:', user.email);
+            showMainContent();
+          } else {
+            console.log('No user authenticated');
+            showLogin();
+          }
+        });
+
+        const loginButton = document.getElementById('login-button');
+        if (loginButton) {
+          loginButton.addEventListener('click', () => {
+            console.log('Login button clicked on device:', navigator.userAgent);
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value.trim();
+            console.log('Login attempt with email:', email);
+            if (!email || !password) {
+              alert('请填写邮箱和密码！');
+              return;
+            }
+            signInWithEmailAndPassword(auth, email, password)
+              .then((userCredential) => {
+                console.log('Login successful:', userCredential.user.email);
+                showMainContent();
+              })
+              .catch((error) => {
+                console.error('Login failed:', error.message, error.code);
+                alert('登录失败：' + error.message);
+              });
+          });
+          loginButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            loginButton.click();
+          });
+        }
+
+        const addProductButton = document.getElementById('add-product-button');
+        if (addProductButton) {
+          addProductButton.addEventListener('click', () => {
+            console.log('Add product button clicked');
+            document.getElementById('add-product-modal').style.display = 'block';
+          });
+        }
+
+        const cancelButton = document.getElementById('cancel-button');
+        if (cancelButton) {
+          cancelButton.addEventListener('click', () => {
+            document.getElementById('add-product-form').reset();
+            document.getElementById('add-product-modal').style.display = 'none';
+          });
+        }
+
+        const homeButton = document.getElementById('home-button');
+        if (homeButton) {
+          homeButton.addEventListener('click', () => {
+            window.location.href = '/';
+          });
+        }
       });
     } catch (error) {
       console.error('Firebase initialization failed:', error);
@@ -338,101 +379,105 @@
   </script>
 </head>
 <body>
-  <section id="admin-login" class="admin-section">
+  <nav class="navbar navbar-expand-lg">
     <div class="container">
+      <a class="navbar-brand" href="#">Muphy Coffee - 后台管理</a>
+      <button class="btn btn-primary ms-auto" id="logout-button" onclick="logout()">退出登录</button>
+    </div>
+  </nav>
+
+  <div id="login-section" class="section">
+    <div class="login-container">
       <h2>管理员登录</h2>
       <form>
         <div class="mb-3">
           <label for="email" class="form-label">邮箱</label>
-          <input type="email" class="form-control" id="email" placeholder="请输入邮箱" required>
+          <input type="email" class="form-control" id="email" placeholder="admin@example.com" required>
         </div>
         <div class="mb-3">
           <label for="password" class="form-label">密码</label>
-          <input type="password" class="form-control" id="password" placeholder="请输入密码" required>
+          <input type="password" class="form-control" id="password" required>
         </div>
-        <button type="submit" class="btn btn-primary">登录</button>
+        <button type="button" id="login-button" class="btn btn-primary w-100">登录</button>
+        <button type="button" id="home-button" class="btn btn-secondary w-100 mt-2">返回主页</button>
       </form>
-      <a href="/" class="btn btn-secondary mt-3">返回主页</a>
     </div>
-  </section>
+  </div>
 
-  <div id="admin-sections">
-    <section id="product-manage" class="admin-section">
-      <div class="container">
-        <h2>商品管理</h2>
-        <button class="btn btn-primary mb-3" onclick="document.getElementById('add-product').style.display='block'">添加商品</button>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>名称</th>
-              <th>价格</th>
-              <th>分类</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 商品会通过JavaScript动态加载 -->
-          </tbody>
-        </table>
-      </div>
-    </section>
+  <div id="main-content" class="section" style="display: none;">
+    <h2>商品管理</h2>
+    <button id="add-product-button" class="btn btn-primary mb-3">添加商品</button>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>名称</th>
+          <th>价格</th>
+          <th>分类</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="product-table-body">
+        <tr><td colspan="5" class="loading">加载中...</td></tr>
+      </tbody>
+    </table>
 
-    <section id="order-manage" class="admin-section">
-      <div class="container">
-        <h2>订单管理</h2>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>客户姓名</th>
-              <th>电话号码</th>
-              <th>总金额</th>
-              <th>状态</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- 订单会通过JavaScript动态加载 -->
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <h2 class="mt-5">订单管理</h2>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>商品详情</th>
+          <th>客户姓名</th>
+          <th>电话号码</th>
+          <th>总金额</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="order-table-body">
+        <tr><td colspan="7" class="loading">加载中...</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-    <section id="add-product" class="admin-section" style="display:none;">
-      <div class="container">
-        <h2>添加商品</h2>
-        <form>
-          <div class="mb-3">
-            <label for="name" class="form-label">商品名称</label>
-            <input type="text" class="form-control" name="name" placeholder="请输入商品名称" required>
-          </div>
-          <div class="mb-3">
-            <label for="price" class="form-label">价格</label>
-            <input type="number" step="0.01" class="form-control" name="price" placeholder="请输入价格" required>
-          </div>
-          <div class="mb-3">
-            <label for="description" class="form-label">商品描述</label>
-            <textarea class="form-control" name="description" rows="3" placeholder="请输入商品描述" required></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="category" class="form-label">分类</label>
-            <select class="form-control" name="category" required>
-              <option value="特色咖啡">特色咖啡</option>
-              <option value="茶类饮品">茶类饮品</option>
-              <option value="甜点蛋糕">甜点蛋糕</option>
-              <option value="简餐小食">简餐小食</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="imageUrl" class="form-label">图片 URL</label>
-            <input type="text" class="form-control" name="imageUrl" placeholder="请输入图片 URL">
-          </div>
-          <button type="submit" class="btn btn-success">保存</button>
-          <button type="button" class="btn btn-secondary" onclick="this.parentElement.parentElement.style.display='none'">取消</button>
-        </form>
-      </div>
-    </section>
+  <div id="add-product-modal" class="section" style="display: none;">
+    <div class="add-product-form">
+      <h2>添加商品</h2>
+      <form id="add-product-form">
+        <div class="mb-3">
+          <label for="product-id" class="form-label">ID</label>
+          <input type="text" class="form-control" id="product-id" placeholder="留空以自动生成">
+        </div>
+        <div class="mb-3">
+          <label for="product-name" class="form-label">商品名称</label>
+          <input type="text" class="form-control" id="product-name" required>
+        </div>
+        <div class="mb-3">
+          <label for="product-price" class="form-label">价格</label>
+          <input type="number" class="form-control" id="product-price" step="0.01" required>
+        </div>
+        <div class="mb-3">
+          <label for="product-description" class="form-label">商品描述</label>
+          <input type="text" class="form-control" id="product-description">
+        </div>
+        <div class="mb-3">
+          <label for="product-category" class="form-label">分类</label>
+          <select class="form-control" id="product-category" required>
+            <option value="特色咖啡">特色咖啡</option>
+            <option value="茶类饮品">茶类饮品</option>
+            <option value="甜点蛋糕">甜点蛋糕</option>
+            <option value="简餐小食">简餐小食</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="product-image" class="form-label">图片 URL</label>
+          <input type="url" class="form-control" id="product-image">
+        </div>
+        <button type="button" id="save-button" class="btn btn-success w-100" onclick="saveProduct()">保存</button>
+        <button type="button" id="cancel-button" class="btn btn-secondary w-100 mt-2">取消</button>
+      </form>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
